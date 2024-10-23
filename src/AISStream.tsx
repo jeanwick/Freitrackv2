@@ -23,11 +23,30 @@ const portBoundingBoxes: Record<string, BoundingBox> = {
   'Port Elizabeth': [[-34.017609, 25.612232], [-33.964904, 25.689558]],
 };
 
-const AISStream: React.FC<{ mapRef: React.RefObject<HTMLDivElement> }> = ({ mapRef }) => {
+// Utility function to check if a ship is within a bounding box
+const isShipInBoundingBox = (ship: ShipData, boundingBox: BoundingBox): boolean => {
+  const [southWest, northEast] = boundingBox;
+  return (
+    ship.lat >= southWest[0] && ship.lat <= northEast[0] && // Latitude in range
+    ship.lon >= southWest[1] && ship.lon <= northEast[1]    // Longitude in range
+  );
+};
+
+// Define the props for AISStream
+interface AISStreamProps {
+  mapRef?: React.RefObject<HTMLDivElement>; // Optional mapRef prop
+}
+
+const AISStream: React.FC<AISStreamProps> = ({ mapRef }) => {
   const [ships, setShips] = useState<Record<string, ShipData>>({});
   const [status, setStatus] = useState<string>('Disconnected');
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [selectedPort, setSelectedPort] = useState<string>('Durban'); // Track selected port
+  const [shipCountPerPort, setShipCountPerPort] = useState<Record<string, number>>({
+    'Durban': 0,
+    'Cape Town': 0,
+    'Port Elizabeth': 0,
+  });
 
   // Fetch ship data from the backend API
   const fetchShipData = async () => {
@@ -35,11 +54,11 @@ const AISStream: React.FC<{ mapRef: React.RefObject<HTMLDivElement> }> = ({ mapR
       setStatus('Connecting...');
       const response = await axios.get('https://websocket-ais-streamv2.vercel.app/api/ships');
       
-      console.log('API Response:', response.data); // Added console.log to monitor API response
+      console.log('API Response:', response.data); // Monitor API response
 
-      // Access the ship data from response.data.data
+      // Filter out ships with lat/lon of 0,0
       const validShips = response.data.data.filter((ship: ShipData) =>
-        ship.lat !== undefined && ship.lon !== undefined
+        ship.lat !== 0 && ship.lon !== 0
       );
 
       if (validShips.length === 0) {
@@ -55,6 +74,24 @@ const AISStream: React.FC<{ mapRef: React.RefObject<HTMLDivElement> }> = ({ mapR
 
       setShips(updatedShips);
       setStatus('Connected');
+
+      // Calculate ship count per port
+      const updatedShipCount: Record<string, number> = {
+        'Durban': 0,
+        'Cape Town': 0,
+        'Port Elizabeth': 0,
+      };
+
+      validShips.forEach((ship: ShipData) => {
+        Object.keys(portBoundingBoxes).forEach((port) => {
+          if (isShipInBoundingBox(ship, portBoundingBoxes[port])) {
+            updatedShipCount[port] += 1;
+          }
+        });
+      });
+
+      setShipCountPerPort(updatedShipCount);
+
     } catch (err) {
       console.error('Error fetching ship data:', err);
       setErrorDetails('Failed to load ship data.');
@@ -67,7 +104,7 @@ const AISStream: React.FC<{ mapRef: React.RefObject<HTMLDivElement> }> = ({ mapR
   }, []);
 
   // Get bounding box based on the selected port
-  const boundingBox = portBoundingBoxes[selectedPort];
+  const selectedBoundingBox = portBoundingBoxes[selectedPort];
 
   return (
     <div>
@@ -84,15 +121,31 @@ const AISStream: React.FC<{ mapRef: React.RefObject<HTMLDivElement> }> = ({ mapR
         <option value="Port Elizabeth">Port Elizabeth</option>
       </select>
 
+      {/* Display shipment count for each port */}
+      <div>
+        <p><strong>Durban:</strong> {shipCountPerPort['Durban']} ships</p>
+        <p><strong>Cape Town:</strong> {shipCountPerPort['Cape Town']} ships</p>
+        <p><strong>Port Elizabeth:</strong> {shipCountPerPort['Port Elizabeth']} ships</p>
+      </div>
+
       <div ref={mapRef} style={{ height: '500px', width: '100%' }}>
-        <MapContainer center={[-29.85, 31.05]} zoom={10} style={{ height: '100%', width: '100%' }}>
+        <MapContainer center={[-29.85, 31.05]} zoom={5} style={{ height: '100%', width: '100%' }}>
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
 
-          {/* Draw the bounding box around the selected port */}
-          <Rectangle bounds={boundingBox} pathOptions={{ color: 'red' }} />
+          {/* Render all bounding boxes on the map */}
+          {Object.values(portBoundingBoxes).map((boundingBox, index) => (
+            <Rectangle
+              key={index}
+              bounds={boundingBox}
+              pathOptions={{ color: 'red', weight: 2 }}
+            />
+          ))}
+
+          {/* Highlight selected bounding box */}
+          <Rectangle bounds={selectedBoundingBox} pathOptions={{ color: 'blue', weight: 3 }} />
 
           {/* Display each ship as a CircleMarker */}
           {Object.values(ships).map((ship) => (
