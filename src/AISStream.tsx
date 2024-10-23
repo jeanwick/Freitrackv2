@@ -18,8 +18,7 @@ type BoundingBox = [[number, number], [number, number]];
 
 // Define port bounding boxes
 const portBoundingBoxes: Record<string, BoundingBox> = {
-  // 'Durban': [[-29.7205, 30.8762], [-29.9626, 31.0822]],
-  'Durban':[[-38.88, 31.03], [-20.88, 42.74] ],
+  'Durban': [[-38.88, 31.03], [-20.88, 42.74]],
   'Cape Town': [[-33.895056, 18.410718], [-34.013399, 18.452209]],
   'Port Elizabeth': [[-34.017609, 25.612232], [-33.964904, 25.689558]],
 };
@@ -38,7 +37,8 @@ const AISStream: React.FC<{ mapRef: React.RefObject<HTMLDivElement> }> = ({ mapR
       
       console.log('API Response:', response.data); // Added console.log to monitor API response
 
-      const validShips = response.data.filter((ship: ShipData) =>
+      // Access the ship data from response.data.data
+      const validShips = response.data.data.filter((ship: ShipData) =>
         ship.lat !== undefined && ship.lon !== undefined
       );
 
