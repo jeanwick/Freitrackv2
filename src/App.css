@@ -1,0 +1,84 @@
+/* General App Layout */
+.app-container {
+  font-family: 'Arial', sans-serif;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  color: #333;
+  background-color: #f4f7fa;
+}
+
+.app-header {
+  text-align: center;
+  padding: 20px 0;
+  background-color: #5B0006;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 2.5rem;
+}
+
+.app-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.app-nav ul li {
+  margin: 0 15px;
+}
+
+.app-nav ul li a {
+  color: white;
+  text-decoration: none;
+  font-size: 1.1rem;
+}
+
+.app-nav ul li a:hover {
+  text-decoration: underline;
+}
+
+/* Main Content Styling */
+main {
+  margin: 40px 0;
+}
+
+/* Section Styling */
+.card {
+  background-color: white;
+  padding: 30px;
+  border-radius: 10px;
+  margin-bottom: 40px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.card h2 {
+  font-size: 1.75rem;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+/* Footer Styling */
+.app-footer {
+  text-align: center;
+  padding: 20px 0;
+  margin-top: 40px;
+  background-color: #5B0006;
+  color: white;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .app-nav ul {
+    flex-direction: column;
+  }
+
+  .app-nav ul li {
+    margin-bottom: 10px;
+  }
+}
