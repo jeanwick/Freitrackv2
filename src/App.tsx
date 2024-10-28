@@ -38,7 +38,7 @@ const App: React.FC = () => {
 
         <section id="ais-stream" className="card">
           <h2>AIS Stream</h2>
-          <AISStream mapRef={mapRef} /> {/* Pass the ref to AISStream */}
+          <AISStream /> {/* Pass the ref to AISStream */}
         </section>
 
         <section id="congestion" className="card">

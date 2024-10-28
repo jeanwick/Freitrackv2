@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup, Rectangle } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
+import L from 'leaflet';
 
 // Type for ship data
 type ShipData = {
@@ -18,26 +19,25 @@ type BoundingBox = [[number, number], [number, number]];
 
 // Define port bounding boxes
 const portBoundingBoxes: Record<string, BoundingBox> = {
-  'Durban': [[-38.88, 31.03], [-20.88, 42.74]],
+  'Durban': [[-29.9626, 31.0822], [-29.7205, 30.8762]],
   'Cape Town': [[-33.895056, 18.410718], [-34.013399, 18.452209]],
   'Port Elizabeth': [[-34.017609, 25.612232], [-33.964904, 25.689558]],
+  'Miami': [[25.835302, -80.207729], [25.602700, -79.879297]],
+  'Los Angeles': [[33.772292, -118.356139], [33.673490, -118.095731]],
 };
 
 // Utility function to check if a ship is within a bounding box
 const isShipInBoundingBox = (ship: ShipData, boundingBox: BoundingBox): boolean => {
   const [southWest, northEast] = boundingBox;
+
+  // Check if the ship's latitude and longitude are within the bounding box
   return (
     ship.lat >= southWest[0] && ship.lat <= northEast[0] && // Latitude in range
     ship.lon >= southWest[1] && ship.lon <= northEast[1]    // Longitude in range
   );
 };
 
-// Define the props for AISStream
-interface AISStreamProps {
-  mapRef?: React.RefObject<HTMLDivElement>; // Optional mapRef prop
-}
-
-const AISStream: React.FC<AISStreamProps> = ({ mapRef }) => {
+const AISStream: React.FC = () => {
   const [ships, setShips] = useState<Record<string, ShipData>>({});
   const [status, setStatus] = useState<string>('Disconnected');
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
@@ -46,7 +46,11 @@ const AISStream: React.FC<AISStreamProps> = ({ mapRef }) => {
     'Durban': 0,
     'Cape Town': 0,
     'Port Elizabeth': 0,
+    'Miami': 0,
+    'Los Angeles': 0,
   });
+
+  const [mapBounds, setMapBounds] = useState<L.LatLngBoundsExpression>(portBoundingBoxes['Durban']);
 
   // Fetch ship data from the backend API
   const fetchShipData = async () => {
@@ -56,7 +60,7 @@ const AISStream: React.FC<AISStreamProps> = ({ mapRef }) => {
       
       console.log('API Response:', response.data); // Monitor API response
 
-      // Filter out ships with lat/lon of 0,0
+      // Filter out ships with lat/lon of 0,0 or invalid data
       const validShips = response.data.data.filter((ship: ShipData) =>
         ship.lat !== 0 && ship.lon !== 0
       );
@@ -80,6 +84,8 @@ const AISStream: React.FC<AISStreamProps> = ({ mapRef }) => {
         'Durban': 0,
         'Cape Town': 0,
         'Port Elizabeth': 0,
+        'Miami': 0,
+        'Los Angeles': 0,
       };
 
       validShips.forEach((ship: ShipData) => {
@@ -90,6 +96,9 @@ const AISStream: React.FC<AISStreamProps> = ({ mapRef }) => {
         });
       });
 
+      console.log('Updated Ship Counts: ', updatedShipCount); // Check updated ship counts
+
+      // Update the state with the new ship counts
       setShipCountPerPort(updatedShipCount);
 
     } catch (err) {
@@ -103,8 +112,11 @@ const AISStream: React.FC<AISStreamProps> = ({ mapRef }) => {
     fetchShipData();
   }, []);
 
-  // Get bounding box based on the selected port
-  const selectedBoundingBox = portBoundingBoxes[selectedPort];
+  // When the selected port changes, update the map bounds
+  useEffect(() => {
+    const newBounds = portBoundingBoxes[selectedPort];
+    setMapBounds(newBounds);
+  }, [selectedPort]);
 
   return (
     <div>
@@ -119,6 +131,8 @@ const AISStream: React.FC<AISStreamProps> = ({ mapRef }) => {
         <option value="Durban">Durban</option>
         <option value="Cape Town">Cape Town</option>
         <option value="Port Elizabeth">Port Elizabeth</option>
+        <option value="Miami">Miami</option>
+        <option value="Los Angeles">Los Angeles</option>
       </select>
 
       {/* Display shipment count for each port */}
@@ -126,10 +140,12 @@ const AISStream: React.FC<AISStreamProps> = ({ mapRef }) => {
         <p><strong>Durban:</strong> {shipCountPerPort['Durban']} ships</p>
         <p><strong>Cape Town:</strong> {shipCountPerPort['Cape Town']} ships</p>
         <p><strong>Port Elizabeth:</strong> {shipCountPerPort['Port Elizabeth']} ships</p>
+        <p><strong>Miami:</strong> {shipCountPerPort['Miami']} ships</p>
+        <p><strong>Los Angeles:</strong> {shipCountPerPort['Los Angeles']} ships</p>
       </div>
 
-      <div ref={mapRef} style={{ height: '500px', width: '100%' }}>
-        <MapContainer center={[-29.85, 31.05]} zoom={5} style={{ height: '100%', width: '100%' }}>
+      <div style={{ height: '500px', width: '100%' }}>
+        <MapContainer bounds={mapBounds} style={{ height: '100%', width: '100%' }}>
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -145,7 +161,7 @@ const AISStream: React.FC<AISStreamProps> = ({ mapRef }) => {
           ))}
 
           {/* Highlight selected bounding box */}
-          <Rectangle bounds={selectedBoundingBox} pathOptions={{ color: 'blue', weight: 3 }} />
+          <Rectangle bounds={mapBounds} pathOptions={{ color: 'blue', weight: 3 }} />
 
           {/* Display each ship as a CircleMarker */}
           {Object.values(ships).map((ship) => (
